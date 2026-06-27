@@ -559,6 +559,8 @@ export default function App() {
     );
   }
 
+  const myBookingCount = slots.filter(s => (s.bookedByList || (s.bookedBy ? [s.bookedBy] : [])).includes(activeColleagueId)).length;
+
   // Force active tab to safe values if non-admin tries to hack tab states
   const currentTab = (!isAdmin && (activeTab === 'import' || activeTab === 'hr-export')) ? 'book' : activeTab;
 
@@ -606,59 +608,77 @@ export default function App() {
       {/* Main Content Pane */}
       <main className="flex-1 flex flex-col h-full overflow-hidden" id="main-content">
         
-        {/* Navigation Tabs Bar */}
-        <nav className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0 font-sans" id="main-nav">
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden p-2 mr-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shrink-0"
-            aria-label="Open menu"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-          <div className="flex gap-1.5 overflow-x-auto py-1 flex-1">
-            {[
-              { id: 'book', label: 'Book Slots', icon: CalendarRange, hide: false },
-              { id: 'my-bookings', label: 'My Schedule', icon: ClipboardList, hide: false },
-              { id: 'import', label: 'Spreadsheet Import', icon: FileSpreadsheet, hide: !isAdmin },
-              { id: 'hr-export', label: 'HR Export', icon: ShieldAlert, hide: !isAdmin }
-            ].map((tab) => {
-              if (tab.hide) return null;
-              const TabIcon = tab.icon;
-              const isActive = currentTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
-                    isActive
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
-                      : 'text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
-                  id={`tab-${tab.id}`}
-                >
-                  <TabIcon className="h-4 w-4 shrink-0" />
-                  {tab.label}
-                  {tab.id === 'my-bookings' && slots.filter(s => (s.bookedByList || (s.bookedBy ? [s.bookedBy] : [])).includes(activeColleagueId)).length > 0 && (
-                    <span className="bg-indigo-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-mono leading-none font-bold">
-                      {slots.filter(s => (s.bookedByList || (s.bookedBy ? [s.bookedBy] : [])).includes(activeColleagueId)).length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Navigation Tabs Bar — desktop only */}
+        <nav className="bg-white border-b border-slate-200 px-4 py-2 shrink-0 font-sans" id="main-nav">
+          {/* Mobile top bar: hamburger + app title */}
+          <div className="flex items-center justify-between lg:hidden">
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="p-2 rounded-xl border border-slate-200 text-slate-600 cursor-pointer"
+                aria-label="Open menu"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded flex items-center justify-center bg-white border border-slate-100 p-0.5">
+                  <img src="/porg_logo_rgb_favicon_512x512.svg" alt="PORG" className="w-full h-full object-contain" />
+                </div>
+                <span className="font-bold text-sm text-slate-800 tracking-tight">PORG Duty</span>
+              </div>
+            </div>
+            {myBookingCount > 0 && currentTab !== 'my-bookings' && (
+              <span className="bg-indigo-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-bold">
+                {myBookingCount}
+              </span>
+            )}
           </div>
 
-          {/* Quick Notice Info */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden md:flex items-center gap-2 text-slate-400 bg-slate-50 border border-slate-100 rounded-full px-3 py-1 text-[11px] font-medium font-mono">
-              <BadgeInfo className="h-3.5 w-3.5 text-slate-400" />
-              <span>Baselines: 30s lock active</span>
+          {/* Desktop tab bar */}
+          <div className="hidden lg:flex items-center justify-between">
+            <div className="flex gap-1.5 overflow-x-auto py-1 flex-1">
+              {[
+                { id: 'book', label: 'Book Slots', icon: CalendarRange, hide: false },
+                { id: 'my-bookings', label: 'My Schedule', icon: ClipboardList, hide: false },
+                { id: 'import', label: 'Spreadsheet Import', icon: FileSpreadsheet, hide: !isAdmin },
+                { id: 'hr-export', label: 'HR Export', icon: ShieldAlert, hide: !isAdmin }
+              ].map((tab) => {
+                if (tab.hide) return null;
+                const TabIcon = tab.icon;
+                const isActive = currentTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
+                      isActive
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                        : 'text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                    id={`tab-${tab.id}`}
+                  >
+                    <TabIcon className="h-4 w-4 shrink-0" />
+                    {tab.label}
+                    {tab.id === 'my-bookings' && myBookingCount > 0 && (
+                      <span className="bg-indigo-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-mono leading-none font-bold">
+                        {myBookingCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="hidden md:flex items-center gap-2 text-slate-400 bg-slate-50 border border-slate-100 rounded-full px-3 py-1 text-[11px] font-medium font-mono">
+                <BadgeInfo className="h-3.5 w-3.5 text-slate-400" />
+                <span>Baselines: 30s lock active</span>
+              </div>
             </div>
           </div>
         </nav>
 
         {/* Dynamic Inner Panel Stage */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8" id="stage-panel">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20 lg:pb-8" id="stage-panel">
           <div className="max-w-6xl mx-auto w-full h-full">
             <AnimatePresence mode="wait">
               <motion.div
@@ -709,6 +729,45 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 flex items-stretch safe-bottom" id="mobile-bottom-nav">
+        {([
+          { id: 'book', label: 'Book', icon: CalendarRange, hide: false },
+          { id: 'my-bookings', label: 'Schedule', icon: ClipboardList, hide: false },
+          { id: 'import', label: 'Import', icon: FileSpreadsheet, hide: !isAdmin },
+          { id: 'hr-export', label: 'HR', icon: ShieldAlert, hide: !isAdmin },
+        ] as const).filter(t => !t.hide).map((tab) => {
+          const TabIcon = tab.icon;
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold transition-all cursor-pointer ${
+                isActive ? 'text-indigo-600' : 'text-slate-400'
+              }`}
+            >
+              <div className="relative">
+                <TabIcon className="h-5 w-5" />
+                {tab.id === 'my-bookings' && myBookingCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 bg-indigo-500 text-white rounded-full text-[8px] w-4 h-4 flex items-center justify-center font-bold">
+                    {myBookingCount}
+                  </span>
+                )}
+              </div>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setMobileSidebarOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold text-slate-400 cursor-pointer"
+        >
+          <Menu className="h-5 w-5" />
+          <span>Profile</span>
+        </button>
+      </nav>
     </div>
   );
 }

@@ -86,11 +86,11 @@ export default function Sidebar({
       <div className="p-5 border-b border-slate-100 shrink-0" id="sidebar-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 text-indigo-600">
-            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm bg-white border border-slate-100 p-0.5">
               <img
                 src="/porg_logo_rgb_favicon_512x512.svg"
                 alt="PORG logo"
-                className="w-full h-full object-cover app-logo"
+                className="w-full h-full object-contain app-logo"
               />
             </div>
             <span className="font-bold text-base tracking-tight text-slate-900">PORG Duty & Emergency</span>

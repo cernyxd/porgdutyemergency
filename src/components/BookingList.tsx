@@ -363,83 +363,150 @@ export default function BookingList({
       {/* High-Density Tabular Display */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm" id="booking-grid-table-container">
         {filteredSlots.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="p-3.5 pl-5">Day of Week</th>
-                  <th className="p-3.5">Time Slot</th>
-                  <th className="p-3.5">Room / Location</th>
-                  <th className="p-3.5">Duty / Cover Role</th>
-                  <th className="p-3.5 pr-5 text-right">Status & Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredSlots.map(slot => {
-                  const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
-                  const maxCap = slot.maxCapacity || 1;
-                  const isBookedByMe = list.includes(activeColleagueId);
-                  const dayName = getDayName(slot.date);
-                  const spotsLeft = Math.max(0, maxCap - list.length);
+          <>
+            {/* Mobile card list */}
+            <div className="md:hidden flex flex-col divide-y divide-slate-100">
+              {filteredSlots.map(slot => {
+                const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
+                const maxCap = slot.maxCapacity || 1;
+                const isBookedByMe = list.includes(activeColleagueId);
+                const dayName = getDayName(slot.date);
+                const spotsLeft = Math.max(0, maxCap - list.length);
 
-                  return (
-                    <tr key={slot.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-3.5 pl-5 font-bold text-slate-900">
-                        {dayName}
-                      </td>
-                      <td className="p-3.5 font-mono text-slate-600 font-semibold">
-                        {slot.time}
-                      </td>
-                      <td className="p-3.5">
-                        <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200/50">
-                          {slot.location}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-slate-800">
-                        <div className="flex flex-col">
-                          <span className="font-bold">{slot.title}</span>
-                          {maxCap > 1 && (
-                            <span className="text-[10px] text-indigo-600 font-semibold mt-0.5">
-                              Capacity: {list.length}/{maxCap} booked ({spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left)
+                return (
+                  <div key={slot.id} className="p-4 flex flex-col gap-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider shrink-0 ${
+                            slot.type === 'duty'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-purple-50 text-purple-700 border border-purple-100'
+                          }`}>
+                            {slot.type}
+                          </span>
+                          {isBookedByMe && (
+                            <span className="text-indigo-600 font-bold flex items-center gap-1 text-[10px]">
+                              <Check className="h-3 w-3" /> Booked
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="p-3.5 pr-5 text-right">
-                        {isBookedByMe ? (
-                          <div className="flex items-center justify-end gap-2.5">
-                            <span className="text-indigo-600 font-bold flex items-center gap-1 text-[11px]">
-                              <Check className="h-3.5 w-3.5 text-indigo-600 font-extrabold" />
-                              Booked by You
-                            </span>
-                            <button
-                              onClick={() => onCancelBooking(slot.id)}
-                              className="px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer text-center"
-                              title="Cancel your slot reservation"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => onBookSlot(slot.id)}
-                            disabled={isCooldownActive || spotsLeft === 0}
-                            className={`px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border text-center ${
-                              isCooldownActive || spotsLeft === 0
-                                ? 'claim-slot-btn-disabled cursor-not-allowed'
-                                : 'claim-slot-btn cursor-pointer'
-                            }`}
-                          >
-                            {spotsLeft === 0 ? 'Full' : 'Claim Slot'}
-                          </button>
+                        <p className="font-bold text-sm text-slate-900 leading-tight truncate">{slot.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{slot.location}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] font-bold text-slate-700">{dayName}</span>
+                        <span className="text-[11px] font-mono text-slate-500">{slot.time}</span>
+                        {maxCap > 1 && (
+                          <span className="text-[10px] text-indigo-600 font-semibold">
+                            {list.length}/{maxCap} booked
+                          </span>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+
+                      {isBookedByMe ? (
+                        <button
+                          onClick={() => onCancelBooking(slot.id)}
+                          className="px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer shrink-0"
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onBookSlot(slot.id)}
+                          disabled={isCooldownActive || spotsLeft === 0}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all border shrink-0 ${
+                            isCooldownActive || spotsLeft === 0
+                              ? 'claim-slot-btn-disabled cursor-not-allowed'
+                              : 'claim-slot-btn cursor-pointer'
+                          }`}
+                        >
+                          {spotsLeft === 0 ? 'Full' : 'Claim Slot'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                    <th className="p-3.5 pl-5">Day of Week</th>
+                    <th className="p-3.5">Time Slot</th>
+                    <th className="p-3.5">Room / Location</th>
+                    <th className="p-3.5">Duty / Cover Role</th>
+                    <th className="p-3.5 pr-5 text-right">Status & Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredSlots.map(slot => {
+                    const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
+                    const maxCap = slot.maxCapacity || 1;
+                    const isBookedByMe = list.includes(activeColleagueId);
+                    const dayName = getDayName(slot.date);
+                    const spotsLeft = Math.max(0, maxCap - list.length);
+
+                    return (
+                      <tr key={slot.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-3.5 pl-5 font-bold text-slate-900">{dayName}</td>
+                        <td className="p-3.5 font-mono text-slate-600 font-semibold">{slot.time}</td>
+                        <td className="p-3.5">
+                          <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-200/50">
+                            {slot.location}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-slate-800">
+                          <div className="flex flex-col">
+                            <span className="font-bold">{slot.title}</span>
+                            {maxCap > 1 && (
+                              <span className="text-[10px] text-indigo-600 font-semibold mt-0.5">
+                                Capacity: {list.length}/{maxCap} booked ({spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3.5 pr-5 text-right">
+                          {isBookedByMe ? (
+                            <div className="flex items-center justify-end gap-2.5">
+                              <span className="text-indigo-600 font-bold flex items-center gap-1 text-[11px]">
+                                <Check className="h-3.5 w-3.5 font-extrabold" />
+                                Booked by You
+                              </span>
+                              <button
+                                onClick={() => onCancelBooking(slot.id)}
+                                className="px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer text-center"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => onBookSlot(slot.id)}
+                              disabled={isCooldownActive || spotsLeft === 0}
+                              className={`px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border text-center ${
+                                isCooldownActive || spotsLeft === 0
+                                  ? 'claim-slot-btn-disabled cursor-not-allowed'
+                                  : 'claim-slot-btn cursor-pointer'
+                              }`}
+                            >
+                              {spotsLeft === 0 ? 'Full' : 'Claim Slot'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="py-14 flex flex-col items-center justify-center text-center p-6 bg-slate-50/30" id="table-empty-state">
             <div className="bg-white text-slate-300 p-3.5 rounded-full border border-slate-100 mb-3 shadow-sm">
