@@ -157,7 +157,7 @@ export default function BookingList({
     <div className="flex flex-col gap-5" id="booking-list-container">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-3" id="booking-list-header">
-        <div>
+        <div className="md:flex-1">
           <h2 className="text-lg font-bold font-sans tracking-tight text-slate-800">Available Cover & Duties</h2>
           <p className="text-xs text-slate-500">
             Bookings are subject to a fair-share 30s cooldown.
@@ -165,14 +165,14 @@ export default function BookingList({
         </div>
 
         {/* Tab switch between Duties and Emergencies */}
-        <div className="flex bg-slate-100 p-1 rounded-xl self-start md:self-center shadow-sm" id="type-tabs">
+        <div className="flex bg-slate-100 p-1.5 rounded-xl self-start md:self-center md:mx-auto shadow-sm" id="type-tabs">
           <button
             onClick={() => {
               setActiveTypeTab('duty');
               setSelectedLocation('all'); // reset location filter on tab switch to avoid zero matches
               setTimeFilter('all'); // reset time filter on tab switch to avoid zero matches
             }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
               activeTypeTab === 'duty'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
@@ -186,7 +186,7 @@ export default function BookingList({
               setSelectedLocation('all'); // reset location filter on tab switch to avoid zero matches
               setTimeFilter('all'); // reset time filter on tab switch to avoid zero matches
             }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
               activeTypeTab === 'emergency'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
@@ -195,6 +195,8 @@ export default function BookingList({
             Emergency Cover
           </button>
         </div>
+
+        <div className="hidden md:block md:flex-1" aria-hidden="true"></div>
       </div>
 
       {/* Filter and Query Controls */}
@@ -412,7 +414,7 @@ export default function BookingList({
                             </span>
                             <button
                               onClick={() => onCancelBooking(slot.id)}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                              className="px-3.5 py-2 rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer"
                               title="Cancel your slot reservation"
                             >
                               Cancel
@@ -422,10 +424,10 @@ export default function BookingList({
                           <button
                             onClick={() => onBookSlot(slot.id)}
                             disabled={isCooldownActive || spotsLeft === 0}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-tight transition-all ${
+                            className={`px-3.5 py-2 rounded-lg text-[11px] font-bold tracking-tight transition-all border ${
                               isCooldownActive || spotsLeft === 0
-                                ? 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
-                                : 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm cursor-pointer'
+                                ? 'claim-slot-btn-disabled cursor-not-allowed'
+                                : 'claim-slot-btn cursor-pointer'
                             }`}
                           >
                             {spotsLeft === 0 ? 'Full' : 'Claim Slot'}

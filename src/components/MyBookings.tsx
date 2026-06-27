@@ -103,7 +103,7 @@ export default function MyBookings({
 
                       <button
                         onClick={() => onCancelBooking(slot.id)}
-                        className="p-2 text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-100 hover:border-rose-600 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5 font-bold text-xs"
+                        className="px-3.5 py-2 rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                         title="Cancel booking"
                         id={`btn-cancel-${slot.id}`}
                       >

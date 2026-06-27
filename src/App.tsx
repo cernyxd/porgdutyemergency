@@ -23,6 +23,7 @@ import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged 
 
 export default function App() {
   const DEFAULT_ADMIN_EMAILS = ['cernyondrej@novyporg.cz'];
+  const SCHOOL_EMAIL_DOMAIN = '@novyporg.cz';
 
   const [googleUser, setGoogleUser] = useState<{ name: string; email: string; department?: string } | null>(null);
   const [currentUserUid, setCurrentUserUid] = useState<string>('');
@@ -35,6 +36,8 @@ export default function App() {
   const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+
+  const isSchoolEmail = (email: string) => email.toLowerCase().endsWith(SCHOOL_EMAIL_DOMAIN);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -108,6 +111,20 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && user.email) {
+        if (!isSchoolEmail(user.email)) {
+          signOut(auth).catch((error) => {
+            console.error('Forced sign-out failed for non-school account', error);
+          });
+          setGoogleUser(null);
+          setCurrentUserUid('');
+          setSlots([]);
+          setColleagues([]);
+          setCooldowns({});
+          setAdminEmails(DEFAULT_ADMIN_EMAILS);
+          showNotification('Access restricted to @novyporg.cz accounts only.', 'error');
+          return;
+        }
+
         setCurrentUserUid(user.uid);
         setGoogleUser({
           name: user.displayName || 'Teacher',
@@ -433,7 +450,7 @@ export default function App() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      if (!user.email?.toLowerCase().endsWith('@novyporg.cz')) {
+      if (!user.email || !isSchoolEmail(user.email)) {
         await signOut(auth);
         showNotification('Access restricted to @novyporg.cz accounts only.', 'error');
         return;
@@ -501,7 +518,7 @@ export default function App() {
                 Sign in with Google
               </button>
               <p className="text-center text-[10px] text-slate-400 mt-3">
-                Please use your official @novyporg.cz school email to alog in.
+                Please use your official @novyporg.cz school email to log in.
               </p>
             </div>
           </div>
@@ -591,10 +608,10 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
                     isActive
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300'
                   }`}
                   id={`tab-${tab.id}`}
                 >

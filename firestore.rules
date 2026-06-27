@@ -8,20 +8,88 @@ service cloud.firestore {
         && request.auth.token.email.matches('.*@novyporg\\.cz$');
     }
 
+    function currentUserColleagueId() {
+      return 'user_' + request.auth.uid;
+    }
+
+    function isAdminUser() {
+      return isSchoolUser()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    function oldBookedList() {
+      return resource.data.bookedByList is list ? resource.data.bookedByList : [];
+    }
+
+    function newBookedList() {
+      return request.resource.data.bookedByList is list ? request.resource.data.bookedByList : [];
+    }
+
+    function isImmutableSlotFieldsUnchanged() {
+      return request.resource.data.type == resource.data.type
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.time == resource.data.time
+        && request.resource.data.location == resource.data.location
+        && request.resource.data.description == resource.data.description
+        && request.resource.data.maxCapacity == resource.data.maxCapacity;
+    }
+
+    function isConsistentSlotBookingPayload() {
+      return request.resource.data.bookedBy == (newBookedList().size() > 0 ? newBookedList()[0] : null)
+        && (request.resource.data.bookedAt == null || request.resource.data.bookedAt is string);
+    }
+
+    function isSelfBookingAdd() {
+      return !oldBookedList().hasAny([currentUserColleagueId()])
+        && newBookedList().hasAny([currentUserColleagueId()])
+        && newBookedList().size() == oldBookedList().size() + 1
+        && newBookedList().hasAll(oldBookedList());
+    }
+
+    function isSelfBookingRemove() {
+      return oldBookedList().hasAny([currentUserColleagueId()])
+        && !newBookedList().hasAny([currentUserColleagueId()])
+        && oldBookedList().size() == newBookedList().size() + 1
+        && oldBookedList().hasAll(newBookedList());
+    }
+
     match /slots/{slotId} {
-      allow read, write: if isSchoolUser();
+      allow read: if isSchoolUser();
+      allow create, delete: if isSchoolUser() && isAdminUser();
+      allow update: if isSchoolUser() && (
+        isAdminUser()
+        || (
+          isImmutableSlotFieldsUnchanged()
+          && isConsistentSlotBookingPayload()
+          && (isSelfBookingAdd() || isSelfBookingRemove())
+        )
+      );
     }
 
     match /colleagues/{colleagueId} {
-      allow read, write: if isSchoolUser();
+      allow read: if isSchoolUser();
+      allow create, update, delete: if isSchoolUser()
+        && (isAdminUser() || colleagueId == currentUserColleagueId());
     }
 
     match /cooldowns/{cooldownId} {
-      allow read, write: if isSchoolUser();
+      allow read: if isSchoolUser();
+      allow write: if isSchoolUser()
+        && (isAdminUser() || cooldownId == currentUserColleagueId());
     }
 
     match /admins/{adminId} {
-      allow read, write: if isSchoolUser();
+      allow read: if isSchoolUser();
+      allow create: if isSchoolUser() && (
+        isAdminUser()
+        || (
+          adminId == 'cernyondrej@novyporg.cz'
+          && request.auth.token.email == adminId
+          && !exists(/databases/$(database)/documents/admins/$(adminId))
+        )
+      );
+      allow update, delete: if isSchoolUser() && isAdminUser();
     }
   }
 }

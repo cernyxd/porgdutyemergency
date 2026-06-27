@@ -126,3 +126,62 @@
   backface-visibility: hidden;
   transform: translateZ(0);
 }
+
+.claim-slot-btn {
+  background-color: #1d4ed8;
+  border-color: #1e40af;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.18);
+}
+
+.claim-slot-btn:hover {
+  background-color: #1e40af;
+  border-color: #1e3a8a;
+}
+
+.claim-slot-btn-disabled {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+:root[data-theme='dark'] .claim-slot-btn {
+  background-color: #3b82f6;
+  border-color: #2563eb;
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .claim-slot-btn:hover {
+  background-color: #2563eb;
+  border-color: #1d4ed8;
+}
+
+:root[data-theme='dark'] .claim-slot-btn-disabled {
+  background-color: #1f2937;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+.cancel-slot-btn {
+  background-color: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.cancel-slot-btn:hover {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+  color: #9f1239;
+}
+
+:root[data-theme='dark'] .cancel-slot-btn {
+  background-color: #3f1d2e;
+  border-color: #6b2238;
+  color: #fda4af;
+}
+
+:root[data-theme='dark'] .cancel-slot-btn:hover {
+  background-color: #4f1d33;
+  border-color: #7a2741;
+  color: #fecdd3;
+}
