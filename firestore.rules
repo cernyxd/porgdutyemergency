@@ -2,29 +2,26 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Basic function to check if user is signed in
-    function isSignedIn() {
-      return request.auth != null;
+    function isSchoolUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@novyporg\\.cz$');
     }
 
-    // Slots collection: allow read/write if signed in
     match /slots/{slotId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSchoolUser();
     }
 
-    // Colleagues collection: allow read/write if signed in
     match /colleagues/{colleagueId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSchoolUser();
     }
 
-    // Cooldowns collection: allow read/write if signed in
     match /cooldowns/{cooldownId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSchoolUser();
     }
 
-    // Admins collection: allow read/write if signed in
     match /admins/{adminId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSchoolUser();
     }
   }
 }

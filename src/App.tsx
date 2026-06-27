@@ -1,146 +1,219 @@
 import React, { useState, useEffect } from 'react';
 import { BookableSlot, Colleague, CooldownState } from './types';
-import { DEFAULT_SLOTS, DEFAULT_COLLEAGUES } from './data';
+import { DEFAULT_SLOTS } from './data';
 import Sidebar from './components/Sidebar';
 import BookingList from './components/BookingList';
 import MyBookings from './components/MyBookings';
 import CsvImporter from './components/CsvImporter';
 import HrExport from './components/HrExport';
-import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell, LogIn, Mail, ChevronRight } from 'lucide-react';
+import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from './firebase';
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+  runTransaction,
+  setDoc,
+  writeBatch,
+} from 'firebase/firestore';
+import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from './firebase';
 
 export default function App() {
+  const DEFAULT_ADMIN_EMAILS = ['cernyondrej@novyporg.cz'];
+
   const [googleUser, setGoogleUser] = useState<{ name: string; email: string; department?: string } | null>(null);
+  const [currentUserUid, setCurrentUserUid] = useState<string>('');
   const [slots, setSlots] = useState<BookableSlot[]>([]);
   const [colleagues, setColleagues] = useState<Colleague[]>([]);
   const [activeColleagueId, setActiveColleagueId] = useState<string>('');
   const [cooldowns, setCooldowns] = useState<CooldownState>({});
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings' | 'import' | 'hr-export'>('book');
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
-  const [adminEmails, setAdminEmails] = useState<string[]>(['cernyondrej@novyporg.cz']);
+  const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
 
-  // Custom login state inside onboarder
-  const [customName, setCustomName] = useState('');
-  const [customEmail, setCustomEmail] = useState('');
-  const [showCustomForm, setShowCustomForm] = useState(false);
+  const sanitizeSlot = (slot: any): BookableSlot => {
+    const list = Array.isArray(slot.bookedByList) ? slot.bookedByList : (slot.bookedBy ? [slot.bookedBy] : []);
+    return {
+      ...slot,
+      maxCapacity: slot.maxCapacity || 1,
+      bookedByList: list,
+      bookedBy: list.length > 0 ? list[0] : null,
+      bookedAt: slot.bookedAt || null,
+    };
+  };
 
-  // Initialize data from localStorage or defaults
+  const deleteCollectionDocs = async (collectionName: string) => {
+    const snapshot = await getDocs(collection(db, collectionName));
+    let batch = writeBatch(db);
+    let opCount = 0;
+
+    for (const docSnap of snapshot.docs) {
+      batch.delete(docSnap.ref);
+      opCount += 1;
+      if (opCount === 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+      }
+    }
+
+    if (opCount > 0) {
+      await batch.commit();
+    }
+  };
+
+  const upsertSlotsInChunks = async (nextSlots: BookableSlot[]) => {
+    let batch = writeBatch(db);
+    let opCount = 0;
+
+    for (const slot of nextSlots) {
+      batch.set(doc(db, 'slots', slot.id), sanitizeSlot(slot));
+      opCount += 1;
+      if (opCount === 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+      }
+    }
+
+    if (opCount > 0) {
+      await batch.commit();
+    }
+  };
+
   useEffect(() => {
-    // Listen to real Firebase Auth state
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && user.email) {
+        setCurrentUserUid(user.uid);
         setGoogleUser({
           name: user.displayName || 'Teacher',
-          email: user.email || '',
-          department: 'General'
+          email: user.email,
+          department: 'General',
         });
       } else {
+        setCurrentUserUid('');
         setGoogleUser(null);
+        setSlots([]);
+        setColleagues([]);
+        setCooldowns({});
+        setAdminEmails(DEFAULT_ADMIN_EMAILS);
       }
     });
 
-    const storedAdmins = localStorage.getItem('porgdutyemergency_booking_admins');
-    if (storedAdmins) {
-      try {
-        setAdminEmails(JSON.parse(storedAdmins));
-      } catch (e) {
-        console.error('Error parsing admin emails', e);
-      }
-    }
-
-    const storedSlots = localStorage.getItem('porgdutyemergency_booking_slots_v3');
-    const storedColleagues = localStorage.getItem('porgdutyemergency_booking_colleagues_v3');
-    const storedCooldowns = localStorage.getItem('porgdutyemergency_booking_cooldowns_v3');
-
-    let finalColleagues = DEFAULT_COLLEAGUES;
-    if (storedColleagues) {
-      try {
-        finalColleagues = JSON.parse(storedColleagues);
-      } catch (e) {
-        console.error('Error parsing colleagues from localStorage', e);
-      }
-    }
-    setColleagues(finalColleagues);
-
-    let finalSlots = DEFAULT_SLOTS;
-    if (storedSlots) {
-      try {
-        const parsed = JSON.parse(storedSlots);
-        if (Array.isArray(parsed)) {
-          finalSlots = parsed;
-        }
-      } catch (e) {
-        console.error('Error parsing slots from localStorage', e);
-      }
-    }
-    
-    // Sanitize slots to support list-based capacity booking and merge legacy bookings
-    const sanitizedSlots = finalSlots.map((slot: any) => {
-      const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
-      return {
-        ...slot,
-        maxCapacity: slot.maxCapacity || 1,
-        bookedByList: list,
-        bookedBy: list.length > 0 ? list[0] : null
-      };
-    });
-    setSlots(sanitizedSlots);
-
-    let finalCooldowns: CooldownState = {};
-    if (storedCooldowns) {
-      try {
-        finalCooldowns = JSON.parse(storedCooldowns);
-      } catch (e) {
-        console.error('Error parsing cooldowns', e);
-      }
-    }
-    setCooldowns(finalCooldowns);
-    
     return () => unsubscribe();
   }, []);
 
-  // Sync active colleague based on the signed-in Google user
   useEffect(() => {
-    if (!googleUser || colleagues.length === 0) return;
+    if (!currentUserUid || !googleUser) return;
 
-    // Check if the user exists in our colleague registry
-    const existing = colleagues.find(c => c.email.toLowerCase() === googleUser.email.toLowerCase());
+    setIsDataLoading(true);
+
+    let slotsReady = false;
+    let colleaguesReady = false;
+    let cooldownsReady = false;
+    let adminsReady = false;
+
+    const markReady = () => {
+      if (slotsReady && colleaguesReady && cooldownsReady && adminsReady) {
+        setIsDataLoading(false);
+      }
+    };
+
+    const bootstrap = async () => {
+      try {
+        await setDoc(doc(db, 'admins', DEFAULT_ADMIN_EMAILS[0]), {
+          email: DEFAULT_ADMIN_EMAILS[0],
+          createdAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const colleagueId = `user_${currentUserUid}`;
+        await setDoc(doc(db, 'colleagues', colleagueId), {
+          id: colleagueId,
+          name: googleUser.name,
+          email: googleUser.email.toLowerCase(),
+          department: googleUser.department || 'General',
+        }, { merge: true });
+
+        const hasSlots = await getDocs(query(collection(db, 'slots'), limit(1)));
+        if (hasSlots.empty) {
+          await upsertSlotsInChunks(DEFAULT_SLOTS);
+        }
+      } catch (error) {
+        console.error('Firestore bootstrap failed', error);
+      }
+    };
+
+    bootstrap();
+
+    const unsubSlots = onSnapshot(collection(db, 'slots'), (snapshot) => {
+      const nextSlots = snapshot.docs.map((d) => sanitizeSlot({ id: d.id, ...d.data() }));
+      setSlots(nextSlots);
+      slotsReady = true;
+      markReady();
+    });
+
+    const unsubColleagues = onSnapshot(collection(db, 'colleagues'), (snapshot) => {
+      const nextColleagues = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Colleague));
+      setColleagues(nextColleagues);
+      colleaguesReady = true;
+      markReady();
+    });
+
+    const unsubCooldowns = onSnapshot(collection(db, 'cooldowns'), (snapshot) => {
+      const nextCooldowns: CooldownState = {};
+      snapshot.docs.forEach((d) => {
+        const ts = Number(d.data().timestamp || 0);
+        if (ts > Date.now()) {
+          nextCooldowns[d.id] = ts;
+        }
+      });
+      setCooldowns(nextCooldowns);
+      cooldownsReady = true;
+      markReady();
+    });
+
+    const unsubAdmins = onSnapshot(collection(db, 'admins'), (snapshot) => {
+      const emails = snapshot.docs
+        .map((d) => String(d.data().email || d.id).toLowerCase())
+        .filter(Boolean);
+      setAdminEmails(emails.length > 0 ? emails : DEFAULT_ADMIN_EMAILS);
+      adminsReady = true;
+      markReady();
+    });
+
+    return () => {
+      unsubSlots();
+      unsubColleagues();
+      unsubCooldowns();
+      unsubAdmins();
+    };
+  }, [currentUserUid, googleUser]);
+
+  useEffect(() => {
+    if (!googleUser || !currentUserUid) return;
+
+    const existing = colleagues.find((c) => c.email.toLowerCase() === googleUser.email.toLowerCase());
     if (existing) {
-      setActiveColleagueId(existing.id);
-    } else {
-      // Auto-register the signed-in Google user as a teacher in our list!
-      const newColleagueId = `colleague-${Date.now()}`;
-      const newColleague: Colleague = {
-        id: newColleagueId,
-        name: googleUser.name,
-        email: googleUser.email,
-        department: googleUser.department || 'General'
-      };
-      
-      const updatedColleagues = [...colleagues, newColleague];
-      setColleagues(updatedColleagues);
-      localStorage.setItem('porgdutyemergency_booking_colleagues_v3', JSON.stringify(updatedColleagues));
-      setActiveColleagueId(newColleagueId);
+      if (activeColleagueId !== existing.id) {
+        setActiveColleagueId(existing.id);
+      }
+      return;
     }
-  }, [googleUser, colleagues]);
 
-  // Save states to localStorage whenever they change
-  useEffect(() => {
-    if (slots.length > 0) {
-      localStorage.setItem('porgdutyemergency_booking_slots_v3', JSON.stringify(slots));
-    }
-  }, [slots]);
-
-  useEffect(() => {
-    if (colleagues.length > 0) {
-      localStorage.setItem('porgdutyemergency_booking_colleagues_v3', JSON.stringify(colleagues));
-    }
-  }, [colleagues]);
-
-  useEffect(() => {
-    localStorage.setItem('porgdutyemergency_booking_cooldowns_v3', JSON.stringify(cooldowns));
-  }, [cooldowns]);
+    const colleagueId = `user_${currentUserUid}`;
+    setDoc(doc(db, 'colleagues', colleagueId), {
+      id: colleagueId,
+      name: googleUser.name,
+      email: googleUser.email.toLowerCase(),
+      department: googleUser.department || 'General',
+    }, { merge: true }).catch((error) => {
+      console.error('Failed to auto-register colleague', error);
+    });
+  }, [googleUser, currentUserUid, colleagues, activeColleagueId]);
 
   // Toast Notification manager
   const showNotification = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -154,127 +227,185 @@ export default function App() {
   const activeCooldownUntil = cooldowns[activeColleagueId] || null;
 
   // Book a slot
-  const handleBookSlot = (slotId: string) => {
+  const handleBookSlot = async (slotId: string) => {
     if (!activeColleagueId) {
       showNotification('Please log in or select a colleague profile to book a slot.', 'error');
       return;
     }
 
-    // Double check cooldown
     const currentCooldown = cooldowns[activeColleagueId];
     if (currentCooldown && Date.now() < currentCooldown) {
       showNotification('Cooldown active. Please wait for the timer to finish.', 'error');
       return;
     }
 
-    setSlots(prevSlots => {
-      const slotIndex = prevSlots.findIndex(s => s.id === slotId);
-      if (slotIndex === -1) return prevSlots;
+    try {
+      const slotRef = doc(db, 'slots', slotId);
+      const cooldownRef = doc(db, 'cooldowns', activeColleagueId);
+      await runTransaction(db, async (tx) => {
+        const [slotSnap, cooldownSnap] = await Promise.all([tx.get(slotRef), tx.get(cooldownRef)]);
 
-      const slot = prevSlots[slotIndex];
-      const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
-      const maxCap = slot.maxCapacity || 1;
+        if (!slotSnap.exists()) {
+          throw new Error('slot-missing');
+        }
 
-      if (list.includes(activeColleagueId)) {
-        showNotification('You have already booked this slot!', 'error');
-        return prevSlots;
-      }
+        const remoteCooldown = Number(cooldownSnap.data()?.timestamp || 0);
+        if (remoteCooldown > Date.now()) {
+          throw new Error('cooldown-active');
+        }
 
-      if (list.length >= maxCap) {
-        showNotification('This slot is already fully booked!', 'error');
-        return prevSlots;
-      }
+        const slot = sanitizeSlot({ id: slotSnap.id, ...slotSnap.data() });
+        const list = slot.bookedByList || [];
+        const maxCap = slot.maxCapacity || 1;
 
-      // Perform booking copy
-      const updatedSlots = [...prevSlots];
-      const newList = [...list, activeColleagueId];
-      updatedSlots[slotIndex] = {
-        ...slot,
-        bookedByList: newList,
-        bookedBy: newList[0],
-        bookedAt: new Date().toISOString()
-      };
+        if (list.includes(activeColleagueId)) {
+          throw new Error('already-booked');
+        }
 
-      // Set cooldown for 30 seconds
-      setCooldowns(prev => ({
-        ...prev,
-        [activeColleagueId]: Date.now() + 30000 // 30 seconds
-      }));
+        if (list.length >= maxCap) {
+          throw new Error('slot-full');
+        }
 
-      showNotification(`Successfully booked: "${slot.title}"! (30s cooldown active)`, 'success');
-      return updatedSlots;
-    });
-  };
-
-  // Cancel booking
-  const handleCancelBooking = (slotId: string) => {
-    setSlots(prevSlots => {
-      const slotIndex = prevSlots.findIndex(s => s.id === slotId);
-      if (slotIndex === -1) return prevSlots;
-
-      const slot = prevSlots[slotIndex];
-      const list = slot.bookedByList || (slot.bookedBy ? [slot.bookedBy] : []);
-
-      if (!list.includes(activeColleagueId)) {
-        showNotification('You can only cancel your own bookings.', 'error');
-        return prevSlots;
-      }
-
-      const updatedSlots = [...prevSlots];
-      const newList = list.filter(id => id !== activeColleagueId);
-      updatedSlots[slotIndex] = {
-        ...slot,
-        bookedByList: newList,
-        bookedBy: newList.length > 0 ? newList[0] : null,
-        bookedAt: newList.length > 0 ? slot.bookedAt : null
-      };
-
-      showNotification(`Cancelled booking: "${slot.title}"`, 'info');
-      return updatedSlots;
-    });
-  };
-
-  // Import slots
-  const handleImportSlots = (newSlots: BookableSlot[], append: boolean) => {
-    if (append) {
-      setSlots(prev => {
-        const updated = [...prev, ...newSlots];
-        localStorage.setItem('porgdutyemergency_booking_slots_v3', JSON.stringify(updated));
-        return updated;
+        const newList = [...list, activeColleagueId];
+        tx.update(slotRef, {
+          bookedByList: newList,
+          bookedBy: newList[0] || null,
+          bookedAt: new Date().toISOString(),
+        });
+        tx.set(cooldownRef, { timestamp: Date.now() + 30000 }, { merge: true });
       });
-    } else {
-      setSlots(newSlots);
-      localStorage.setItem('porgdutyemergency_booking_slots_v3', JSON.stringify(newSlots));
+
+      showNotification('Successfully booked slot. 30s cooldown active.', 'success');
+    } catch (error: any) {
+      if (error?.message === 'already-booked') {
+        showNotification('You have already booked this slot.', 'error');
+      } else if (error?.message === 'slot-full') {
+        showNotification('This slot is already fully booked.', 'error');
+      } else if (error?.message === 'cooldown-active') {
+        showNotification('Cooldown active. Please wait for the timer to finish.', 'error');
+      } else {
+        console.error('Booking failed', error);
+        showNotification('Booking failed. Please try again.', 'error');
+      }
     }
-    setActiveTab('book'); // Auto switch to Book Slots tab to see results!
-    showNotification(`Spreadsheet data imported successfully!`, 'success');
   };
 
-  // Clear all slots (wipe database)
-  const handleClearAllSlots = () => {
-    setSlots([]);
-    localStorage.setItem('porgdutyemergency_booking_slots_v3', JSON.stringify([]));
-    showNotification('All slots and bookings have been deleted.', 'info');
+  const handleCancelBooking = async (slotId: string) => {
+    if (!activeColleagueId) return;
+
+    try {
+      const slotRef = doc(db, 'slots', slotId);
+      await runTransaction(db, async (tx) => {
+        const slotSnap = await tx.get(slotRef);
+        if (!slotSnap.exists()) {
+          throw new Error('slot-missing');
+        }
+
+        const slot = sanitizeSlot({ id: slotSnap.id, ...slotSnap.data() });
+        const list = slot.bookedByList || [];
+        if (!list.includes(activeColleagueId)) {
+          throw new Error('not-owner');
+        }
+
+        const newList = list.filter((id) => id !== activeColleagueId);
+        tx.update(slotRef, {
+          bookedByList: newList,
+          bookedBy: newList.length > 0 ? newList[0] : null,
+          bookedAt: newList.length > 0 ? slot.bookedAt : null,
+        });
+      });
+
+      showNotification('Booking cancelled.', 'info');
+    } catch (error: any) {
+      if (error?.message === 'not-owner') {
+        showNotification('You can only cancel your own bookings.', 'error');
+      } else {
+        console.error('Cancel booking failed', error);
+        showNotification('Cancellation failed. Please try again.', 'error');
+      }
+    }
   };
 
-  // Add a new colleague (Admin-only feature)
-  const handleAddColleague = (name: string, email: string) => {
+  const handleImportSlots = async (newSlots: BookableSlot[], append: boolean) => {
+    try {
+      if (!append) {
+        await deleteCollectionDocs('slots');
+      }
+      await upsertSlotsInChunks(newSlots);
+
+      setActiveTab('book');
+      showNotification('Spreadsheet data imported successfully.', 'success');
+    } catch (error) {
+      console.error('Import slots failed', error);
+      showNotification('Import failed. Please try again.', 'error');
+    }
+  };
+
+  const handleClearAllSlots = async () => {
+    try {
+      await deleteCollectionDocs('slots');
+      showNotification('All slots and bookings have been deleted.', 'info');
+    } catch (error) {
+      console.error('Clear slots failed', error);
+      showNotification('Unable to clear slots.', 'error');
+    }
+  };
+
+  const handleAddColleague = async (name: string, email: string) => {
     const isDup = colleagues.some(c => c.email.toLowerCase() === email.toLowerCase());
     if (isDup) {
       showNotification('A colleague with this email already exists.', 'error');
       return;
     }
 
-    const newColleague = {
+    const newColleague: Colleague = {
       id: `colleague-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       name,
       email,
       department: 'General'
     };
 
-    setColleagues(prev => [...prev, newColleague]);
-    setActiveColleagueId(newColleague.id);
-    showNotification(`Registered teacher: ${name}! Switched active profile.`, 'success');
+    try {
+      await setDoc(doc(db, 'colleagues', newColleague.id), {
+        ...newColleague,
+        email: newColleague.email.toLowerCase(),
+      });
+      setActiveColleagueId(newColleague.id);
+      showNotification(`Registered teacher: ${name}. Switched active profile.`, 'success');
+    } catch (error) {
+      console.error('Add colleague failed', error);
+      showNotification('Failed to add colleague.', 'error');
+    }
+  };
+
+  const handleUpdateAdmins = async (newAdmins: string[]) => {
+    const normalized: string[] = Array.from(new Set(newAdmins.map((email) => email.toLowerCase().trim()).filter(Boolean)));
+    const nextAdmins = normalized.length > 0 ? normalized : DEFAULT_ADMIN_EMAILS;
+
+    try {
+      const batch = writeBatch(db);
+      const currentSet = new Set<string>(adminEmails.map((email) => email.toLowerCase()));
+      const nextSet = new Set<string>(nextAdmins);
+
+      for (const existing of currentSet) {
+        if (!nextSet.has(existing)) {
+          batch.delete(doc(db, 'admins', existing));
+        }
+      }
+
+      for (const email of nextSet) {
+        batch.set(doc(db, 'admins', email), {
+          email,
+          createdAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+
+      await batch.commit();
+      showNotification('Admin list updated.', 'success');
+    } catch (error) {
+      console.error('Update admins failed', error);
+      showNotification('Failed to update admin list.', 'error');
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -306,7 +437,7 @@ export default function App() {
     }
   };
 
-  const isAdmin = googleUser?.email && adminEmails.includes(googleUser.email.toLowerCase());
+  const isAdmin = !!(googleUser?.email && adminEmails.includes(googleUser.email.toLowerCase()));
 
   // Render Google Login onboarder if not signed in
   if (!googleUser) {
@@ -345,6 +476,16 @@ export default function App() {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isDataLoading) {
+    return (
+      <div className="min-h-screen w-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
+        <div className="bg-white border border-slate-200 rounded-2xl px-6 py-5 text-sm font-semibold text-slate-700 shadow-sm">
+          Syncing schedule from Firestore...
         </div>
       </div>
     );
@@ -491,10 +632,7 @@ export default function App() {
                     slots={slots}
                     colleagues={colleagues}
                     adminEmails={adminEmails}
-                    onUpdateAdmins={(newAdmins: string[]) => {
-                      setAdminEmails(newAdmins);
-                      localStorage.setItem('porgdutyemergency_booking_admins', JSON.stringify(newAdmins));
-                    }}
+                    onUpdateAdmins={handleUpdateAdmins}
                   />
                 )}
               </motion.div>

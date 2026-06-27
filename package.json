@@ -7,6 +7,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
+    "firebase:rules": "npx firebase-tools deploy --only firestore:rules",
+    "firebase:deploy": "npm run build && npx firebase-tools deploy --only hosting,firestore:rules",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },

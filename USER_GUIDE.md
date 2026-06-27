@@ -28,7 +28,7 @@ After signing in, you land on the booking view.
 - Click **Book** on a slot to reserve it.
 - The app prevents booking the same slot twice and enforces a short cooldown after booking.
 
-> The booking state is stored locally in your browser. Refreshing the page will preserve your current data in that browser.
+> Bookings are saved to the shared Firestore database, so changes sync between staff sessions.
 
 ---
 
@@ -52,21 +52,20 @@ Administrators see two extra tabs: **Spreadsheet Import** and **HR Export**.
 - Use this feature to load a new roster quickly.
 
 ### HR Export
-- View a complete ledger of all bookings stored in the browser.
+- View a complete ledger of all bookings stored in Firestore.
 - Filter by teacher, date, or slot type.
 - Export the current view to CSV for payroll or HR reporting.
 - You can also update the admin email list here.
 
-> Note: Admin permissions are saved in browser localStorage. This is not currently enforced by a shared backend.
+> Admin permissions are shared through Firestore and apply across sessions.
 
 ---
 
 ## 5. Important Limitations
 
-- The app uses Firebase only for Google authentication.
-- Booking data is not stored in Firestore or a shared database yet.
-- This means bookings are saved in your browser only, not synced between users or devices.
-- To make this full multi-user app, a backend persistence layer is needed.
+- The app is designed for `@novyporg.cz` Google accounts.
+- If login fails in production, your IT admin should confirm authorized domains in Firebase Authentication.
+- Booking fairness uses a short cooldown per teacher profile.
 
 ---
 
