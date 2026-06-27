@@ -414,7 +414,7 @@ export default function BookingList({
                             </span>
                             <button
                               onClick={() => onCancelBooking(slot.id)}
-                              className="px-3.5 py-2 rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer"
+                              className="px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border cancel-slot-btn cursor-pointer text-center"
                               title="Cancel your slot reservation"
                             >
                               Cancel
@@ -424,7 +424,7 @@ export default function BookingList({
                           <button
                             onClick={() => onBookSlot(slot.id)}
                             disabled={isCooldownActive || spotsLeft === 0}
-                            className={`px-3.5 py-2 rounded-lg text-[11px] font-bold tracking-tight transition-all border ${
+                            className={`px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border text-center ${
                               isCooldownActive || spotsLeft === 0
                                 ? 'claim-slot-btn-disabled cursor-not-allowed'
                                 : 'claim-slot-btn cursor-pointer'

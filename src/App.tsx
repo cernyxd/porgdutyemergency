@@ -260,6 +260,27 @@ export default function App() {
     }, 4000);
   };
 
+  // Auto-expire cooldowns locally when they run out so UI updates without needing Firestore re-trigger
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    Object.entries(cooldowns).forEach(([id, expiry]) => {
+      const remaining = expiry - Date.now();
+      if (remaining > 0) {
+        const timer = setTimeout(() => {
+          setCooldowns((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        }, remaining);
+        timers.push(timer);
+      }
+    });
+
+    return () => timers.forEach((t) => clearTimeout(t));
+  }, [cooldowns]);
+
   // Cooldown checking
   const activeCooldownUntil = cooldowns[activeColleagueId] || null;
 
