@@ -38,3 +38,91 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] body {
+  background: #0b1220;
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .bg-white {
+  background-color: #0f172a !important;
+}
+
+:root[data-theme='dark'] .bg-slate-50,
+:root[data-theme='dark'] .bg-slate-50\/30,
+:root[data-theme='dark'] .bg-slate-50\/50,
+:root[data-theme='dark'] .bg-slate-50\/80 {
+  background-color: #111827 !important;
+}
+
+:root[data-theme='dark'] .bg-slate-100,
+:root[data-theme='dark'] .bg-slate-100\/80 {
+  background-color: #1f2937 !important;
+}
+
+:root[data-theme='dark'] .bg-indigo-50 {
+  background-color: rgba(55, 48, 163, 0.25) !important;
+}
+
+:root[data-theme='dark'] .text-slate-900,
+:root[data-theme='dark'] .text-slate-800,
+:root[data-theme='dark'] .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+:root[data-theme='dark'] .text-slate-600,
+:root[data-theme='dark'] .text-slate-500,
+:root[data-theme='dark'] .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme='dark'] .text-indigo-900 {
+  color: #c7d2fe !important;
+}
+
+:root[data-theme='dark'] .border-slate-50,
+:root[data-theme='dark'] .border-slate-100,
+:root[data-theme='dark'] .border-slate-200,
+:root[data-theme='dark'] .border-slate-200\/60,
+:root[data-theme='dark'] .border-slate-200\/85,
+:root[data-theme='dark'] .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-slate-50:hover,
+:root[data-theme='dark'] .hover\:bg-slate-50\/50:hover,
+:root[data-theme='dark'] .hover\:bg-slate-100:hover {
+  background-color: #1e293b !important;
+}
+
+:root[data-theme='dark'] .hover\:text-slate-900:hover,
+:root[data-theme='dark'] .hover\:text-slate-800:hover,
+:root[data-theme='dark'] .hover\:text-slate-700:hover {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+  color: #e2e8f0;
+  background-color: #111827;
+  border-color: #334155;
+}
+
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.app-logo {
+  display: block;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}

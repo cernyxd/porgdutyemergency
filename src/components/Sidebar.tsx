@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Colleague, BookableSlot } from '../types';
-import { User, Users, Plus, ShieldAlert, Award, Clock, CalendarDays, CheckCircle2, LogOut } from 'lucide-react';
+import { User, Users, Plus, ShieldAlert, Award, Clock, CalendarDays, CheckCircle2, LogOut, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
@@ -12,6 +12,8 @@ interface SidebarProps {
   cooldownUntil: number | null; // epoch timestamp in ms, or null
   isAdmin: boolean;
   onSignOut: () => void;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
 }
 
 export default function Sidebar({
@@ -22,7 +24,9 @@ export default function Sidebar({
   slots,
   cooldownUntil,
   isAdmin,
-  onSignOut
+  onSignOut,
+  isDarkMode,
+  onToggleTheme
 }: SidebarProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -71,8 +75,12 @@ export default function Sidebar({
       {/* App Brand Header */}
       <div className="p-6 border-b border-slate-100" id="sidebar-header">
         <div className="flex items-center space-x-3 text-indigo-600 mb-1">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-            <span className="text-white font-bold text-sm">P</span>
+          <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            <img
+              src="/porg_logo_rgb_favicon_512x512.svg"
+              alt="PORG logo"
+              className="w-full h-full object-cover app-logo"
+            />
           </div>
           <span className="font-bold text-base tracking-tight text-slate-900">PORG Duty & Emergency</span>
         </div>
@@ -137,6 +145,15 @@ export default function Sidebar({
         </AnimatePresence>
 
         {/* Sign Out Button */}
+        <button
+          onClick={onToggleTheme}
+          className="mt-1 w-full px-3 py-2 border border-slate-200 hover:border-slate-300 bg-white text-slate-600 hover:text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50"
+          id="btn-theme-toggle-sidebar"
+        >
+          {isDarkMode ? <Sun className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : <Moon className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+          {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        </button>
+
         <button
           onClick={onSignOut}
           className="mt-2 w-full px-3 py-2 border border-slate-200 hover:border-slate-300 bg-white text-slate-600 hover:text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50"

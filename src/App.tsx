@@ -6,7 +6,7 @@ import BookingList from './components/BookingList';
 import MyBookings from './components/MyBookings';
 import CsvImporter from './components/CsvImporter';
 import HrExport from './components/HrExport';
-import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell } from 'lucide-react';
+import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   collection,
@@ -34,6 +34,26 @@ export default function App() {
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncTheme = () => setIsDarkMode(mediaQuery.matches);
+
+    syncTheme();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncTheme);
+      return () => mediaQuery.removeEventListener('change', syncTheme);
+    }
+
+    mediaQuery.addListener(syncTheme);
+    return () => mediaQuery.removeListener(syncTheme);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const sanitizeSlot = (slot: any): BookableSlot => {
     const list = Array.isArray(slot.bookedByList) ? slot.bookedByList : (slot.bookedBy ? [slot.bookedBy] : []);
@@ -447,13 +467,22 @@ export default function App() {
           
           {/* Logo & Header */}
           <div className="text-center" id="login-header">
-            <div className="mx-auto w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-md mb-3">
-              <span className="text-white font-extrabold text-lg">P</span>
+            <div className="mx-auto w-10 h-10 rounded-2xl overflow-hidden flex items-center justify-center shadow-md mb-3">
+              <img
+                src="/porg_logo_rgb_favicon_512x512.svg"
+                alt="PORG logo"
+                className="w-full h-full object-cover app-logo"
+              />
             </div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">PORG Duty & Emergency</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Teacher Emergency Lesson & Duty Booking Portal
-            </p>
+            <button
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition-all cursor-pointer"
+              id="btn-theme-toggle-login"
+            >
+              {isDarkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              <span>{isDarkMode ? 'Use Light Mode' : 'Use Dark Mode'}</span>
+            </button>
           </div>
 
           <div className="border-t border-slate-100 my-1"></div>
@@ -472,7 +501,7 @@ export default function App() {
                 Sign in with Google
               </button>
               <p className="text-center text-[10px] text-slate-400 mt-3">
-                Please use your official @novyporg.cz school email to access the booking system.
+                Please use your official @novyporg.cz school email to alog in.
               </p>
             </div>
           </div>
@@ -484,8 +513,8 @@ export default function App() {
   if (isDataLoading) {
     return (
       <div className="min-h-screen w-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
-        <div className="bg-white border border-slate-200 rounded-2xl px-6 py-5 text-sm font-semibold text-slate-700 shadow-sm">
-          Syncing schedule from Firestore...
+        <div className="bg-white border border-slate-200 rounded-2xl px-6 py-5 text-sm font-semibold text-slate-700 shadow-sm flex items-center gap-4">
+          <span>Syncing schedule from Firestore...</span>
         </div>
       </div>
     );
@@ -539,6 +568,8 @@ export default function App() {
         cooldownUntil={activeCooldownUntil}
         isAdmin={isAdmin}
         onSignOut={handleSignOut}
+        isDarkMode={isDarkMode}
+        onToggleTheme={() => setIsDarkMode((prev) => !prev)}
       />
 
       {/* Main Content Pane */}

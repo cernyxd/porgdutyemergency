@@ -118,16 +118,13 @@ export default function HrExport({ slots, colleagues, adminEmails, onUpdateAdmin
 
       // Headers for HR CSV export
       const headers = [
-        'Booking ID',
         'Day of Week',
-        'Date',
         'Time Slot',
         'Type',
         'Title',
         'Room/Location',
         'Assigned Colleague Name',
-        'Colleague Email',
-        'Booking Date Time'
+        'Colleague Email'
       ];
 
       const csvRows = [headers.join(',')];
@@ -144,16 +141,13 @@ export default function HrExport({ slots, colleagues, adminEmails, onUpdateAdmin
         };
 
         const row = [
-          escapeCsvField(record.slotId),
           escapeCsvField(getDayOfWeek(record.date)),
-          escapeCsvField(record.date),
           escapeCsvField(record.time),
           escapeCsvField(record.type.toUpperCase()),
           escapeCsvField(record.title),
           escapeCsvField(record.location),
           escapeCsvField(record.colleagueName),
-          escapeCsvField(record.colleagueEmail),
-          escapeCsvField(record.bookedAt)
+          escapeCsvField(record.colleagueEmail)
         ];
 
         csvRows.push(row.join(','));
@@ -164,7 +158,8 @@ export default function HrExport({ slots, colleagues, adminEmails, onUpdateAdmin
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       
-      const dateStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       link.setAttribute('href', url);
       link.setAttribute('download', `school_schedule_assignments_export_${dateStr}.csv`);
       link.style.visibility = 'hidden';
@@ -273,13 +268,12 @@ export default function HrExport({ slots, colleagues, adminEmails, onUpdateAdmin
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {filteredBookedSlots.map(slot => {
-                      const colleague = colleagues.find(c => c.id === slot.bookedBy);
                       return (
                         <tr key={slot.id} className="hover:bg-slate-50/30">
                           <td className="p-3">
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-800">{colleague?.name || 'Assigned'}</span>
-                              <span className="text-[10px] text-slate-400">{colleague?.email}</span>
+                              <span className="font-bold text-slate-800">{slot.colleagueName || 'Assigned'}</span>
+                              <span className="text-[10px] text-slate-400">{slot.colleagueEmail}</span>
                             </div>
                           </td>
                           <td className="p-3 font-mono text-[10px]">
