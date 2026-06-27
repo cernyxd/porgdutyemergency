@@ -6,7 +6,7 @@ import BookingList from './components/BookingList';
 import MyBookings from './components/MyBookings';
 import CsvImporter from './components/CsvImporter';
 import HrExport from './components/HrExport';
-import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell, Moon, Sun } from 'lucide-react';
+import { CalendarRange, ClipboardList, FileSpreadsheet, ShieldAlert, BadgeInfo, Bell, Moon, Sun, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   collection,
@@ -36,6 +36,7 @@ export default function App() {
   const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   const isSchoolEmail = (email: string) => email.toLowerCase().endsWith(SCHOOL_EMAIL_DOMAIN);
 
@@ -588,34 +589,33 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar: Profile and switcher (if Admin) */}
+      {/* Sidebar: Profile and controls */}
       <Sidebar
         colleagues={colleagues}
         activeColleagueId={activeColleagueId}
-        onSelectColleague={(id) => {
-          // Double check permissions
-          if (!isAdmin && id !== activeColleagueId) {
-            showNotification('Switching colleagues is restricted to school administrators.', 'error');
-            return;
-          }
-          setActiveColleagueId(id);
-          showNotification(`Switched active teacher profile.`, 'info');
-        }}
-        onAddColleague={handleAddColleague}
         slots={slots}
         cooldownUntil={activeCooldownUntil}
         isAdmin={isAdmin}
         onSignOut={handleSignOut}
         isDarkMode={isDarkMode}
         onToggleTheme={() => setIsDarkMode((prev) => !prev)}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
       />
 
       {/* Main Content Pane */}
       <main className="flex-1 flex flex-col h-full overflow-hidden" id="main-content">
         
         {/* Navigation Tabs Bar */}
-        <nav className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shrink-0 font-sans" id="main-nav">
-          <div className="flex gap-1.5 overflow-x-auto py-1">
+        <nav className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between shrink-0 font-sans" id="main-nav">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden p-2 mr-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shrink-0"
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <div className="flex gap-1.5 overflow-x-auto py-1 flex-1">
             {[
               { id: 'book', label: 'Book Slots', icon: CalendarRange, hide: false },
               { id: 'my-bookings', label: 'My Schedule', icon: ClipboardList, hide: false },

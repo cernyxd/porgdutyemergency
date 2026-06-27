@@ -1,36 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Colleague, BookableSlot } from '../types';
-import { User, Users, Plus, ShieldAlert, Award, Clock, CalendarDays, CheckCircle2, LogOut, Moon, Sun } from 'lucide-react';
+import { ShieldAlert, Clock, LogOut, Moon, Sun, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
   colleagues: Colleague[];
   activeColleagueId: string;
-  onSelectColleague: (id: string) => void;
-  onAddColleague: (name: string, email: string) => void;
   slots: BookableSlot[];
-  cooldownUntil: number | null; // epoch timestamp in ms, or null
+  cooldownUntil: number | null;
   isAdmin: boolean;
   onSignOut: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
 export default function Sidebar({
   colleagues,
   activeColleagueId,
-  onSelectColleague,
-  onAddColleague,
   slots,
   cooldownUntil,
   isAdmin,
   onSignOut,
   isDarkMode,
-  onToggleTheme
+  onToggleTheme,
+  mobileOpen,
+  onCloseMobile
 }: SidebarProps) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
 
   const activeColleague = colleagues.find(c => c.id === activeColleagueId);
@@ -59,30 +56,52 @@ export default function Sidebar({
     return () => clearInterval(interval);
   }, [cooldownUntil]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newEmail.trim()) return;
-    onAddColleague(newName.trim(), newEmail.trim());
-    setNewName('');
-    setNewEmail('');
-    setIsAdding(false);
-  };
-
   const progressPercentage = timeLeft > 0 ? (timeLeft / 30) * 100 : 0;
 
   return (
-    <aside className="w-full lg:w-80 bg-white border-r border-slate-200 flex flex-col h-full" id="sidebar-container">
+    <>
+      {/* Mobile backdrop */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            onClick={onCloseMobile}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar panel */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-in-out
+          lg:relative lg:translate-x-0 lg:flex lg:flex-col lg:h-full lg:w-80
+          bg-white border-r border-slate-200 flex flex-col h-full
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+        id="sidebar-container"
+      >
       {/* App Brand Header */}
-      <div className="p-6 border-b border-slate-100" id="sidebar-header">
-        <div className="flex items-center space-x-3 text-indigo-600 mb-1">
-          <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
-            <img
-              src="/porg_logo_rgb_favicon_512x512.svg"
-              alt="PORG logo"
-              className="w-full h-full object-cover app-logo"
-            />
+      <div className="p-5 border-b border-slate-100 shrink-0" id="sidebar-header">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 text-indigo-600">
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+              <img
+                src="/porg_logo_rgb_favicon_512x512.svg"
+                alt="PORG logo"
+                className="w-full h-full object-cover app-logo"
+              />
+            </div>
+            <span className="font-bold text-base tracking-tight text-slate-900">PORG Duty & Emergency</span>
           </div>
-          <span className="font-bold text-base tracking-tight text-slate-900">PORG Duty & Emergency</span>
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -166,111 +185,8 @@ export default function Sidebar({
 
 
 
-      {/* Admin Switcher / Form */}
-      {isAdmin ? (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4" id="colleague-switcher">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Switch Colleague</p>
-            <button 
-              onClick={() => setIsAdding(!isAdding)}
-              className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors border border-transparent hover:border-indigo-100 cursor-pointer"
-              title="Add colleague"
-              id="btn-toggle-add-colleague"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
 
-          {/* Add Colleague Form */}
-          <AnimatePresence>
-            {isAdding && (
-              <motion.form
-                initial={{ opacity: 0, y: -10, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -10, height: 0 }}
-                onSubmit={handleSubmit}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-3 overflow-hidden"
-                id="add-colleague-form"
-              >
-                <h4 className="text-[10px] font-bold text-slate-700 uppercase">Add New Teacher</h4>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    required
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    required
-                    value={newEmail}
-                    onChange={e => setNewEmail(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium"
-                  />
-                </div>
-                <div className="flex gap-2 justify-end text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setIsAdding(false)}
-                    className="px-2.5 py-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg font-bold transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-colors cursor-pointer"
-                  >
-                    Save Teacher
-                  </button>
-                </div>
-              </motion.form>
-            )}
-          </AnimatePresence>
-
-          {/* Colleague List */}
-          <div className="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto pr-1">
-            {colleagues.map(colleague => {
-              const isSelected = colleague.id === activeColleagueId;
-              return (
-                <button
-                  key={colleague.id}
-                  onClick={() => onSelectColleague(colleague.id)}
-                  className={`w-full text-left p-2.5 rounded-xl border flex items-center justify-between transition-all group cursor-pointer ${
-                    isSelected
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-900 ring-1 ring-indigo-200'
-                      : 'bg-white border-slate-100 hover:border-slate-300 text-slate-700 hover:bg-slate-50/50'
-                  }`}
-                  id={`colleague-select-${colleague.id}`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold font-mono shrink-0 ${
-                      isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
-                    }`}>
-                      {colleague.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold truncate leading-tight">{colleague.name}</p>
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 p-6 flex flex-col justify-end text-center bg-slate-50/30">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Logged In Session</p>
-          <p className="text-xs text-slate-500 mt-1 leading-normal font-medium">
-            Standard teacher privileges apply. Profile-switching is restricted.
-          </p>
-        </div>
-      )}
-    </aside>
+      </aside>
+    </>
   );
 }
