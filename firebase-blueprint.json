@@ -1,0 +1,44 @@
+{
+  "collections": [
+    {
+      "name": "slots",
+      "description": "Duty and emergency slots available for booking",
+      "fields": [
+        { "name": "type", "type": "string", "description": "Type of slot: duty or emergency" },
+        { "name": "title", "type": "string", "description": "Title of the slot" },
+        { "name": "date", "type": "string", "description": "Date of the slot (YYYY-MM-DD)" },
+        { "name": "time", "type": "string", "description": "Time period of the slot" },
+        { "name": "location", "type": "string", "description": "Location of the duty" },
+        { "name": "description", "type": "string", "description": "Optional description" },
+        { "name": "bookedBy", "type": "string", "description": "ID of the teacher who booked the slot" },
+        { "name": "bookedAt", "type": "string", "description": "ISO timestamp of when the slot was booked" },
+        { "name": "maxCapacity", "type": "number", "description": "Maximum capacity" },
+        { "name": "bookedByList", "type": "array", "description": "Array of strings (colleague IDs)" }
+      ]
+    },
+    {
+      "name": "colleagues",
+      "description": "List of colleagues in the system",
+      "fields": [
+        { "name": "name", "type": "string", "description": "Colleague's name" },
+        { "name": "email", "type": "string", "description": "Colleague's email address" },
+        { "name": "department", "type": "string", "description": "Colleague's department" }
+      ]
+    },
+    {
+      "name": "cooldowns",
+      "description": "Booking cooldown state per colleague",
+      "fields": [
+        { "name": "timestamp", "type": "number", "description": "Epoch timestamp (ms) when cooldown ends" }
+      ]
+    },
+    {
+      "name": "admins",
+      "description": "List of admin users by email (email is the document ID)",
+      "fields": [
+        { "name": "email", "type": "string", "description": "Admin email address" },
+        { "name": "createdAt", "type": "string", "description": "When the admin was added" }
+      ]
+    }
+  ]
+}

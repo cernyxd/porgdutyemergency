@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Slots collection: allow read/write if signed in
+    match /slots/{slotId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Colleagues collection: allow read/write if signed in
+    match /colleagues/{colleagueId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Cooldowns collection: allow read/write if signed in
+    match /cooldowns/{cooldownId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Admins collection: allow read/write if signed in
+    match /admins/{adminId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

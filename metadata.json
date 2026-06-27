@@ -1,0 +1,6 @@
+{
+  "name": "PORG Duty & Emergency",
+  "description": "Teacher Emergency Lesson & Duty Booking Portal",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
