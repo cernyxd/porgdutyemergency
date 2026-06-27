@@ -506,11 +506,11 @@ export default function App() {
           
           {/* Logo & Header */}
           <div className="text-center" id="login-header">
-            <div className="mx-auto w-10 h-10 rounded-2xl overflow-hidden flex items-center justify-center shadow-md mb-3">
+            <div className="mx-auto w-10 h-10 rounded-2xl overflow-hidden shadow-md mb-3">
               <img
                 src="/porg_logo_rgb_favicon_512x512.svg"
                 alt="PORG logo"
-                className="w-full h-full object-cover app-logo"
+                className="w-full h-full object-contain app-logo"
               />
             </div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">PORG Duty & Emergency</h1>
@@ -621,7 +621,7 @@ export default function App() {
                 <Menu className="h-4 w-4" />
               </button>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded flex items-center justify-center bg-white border border-slate-100 p-0.5">
+                <div className="w-6 h-6 rounded-lg overflow-hidden shrink-0">
                   <img src="/porg_logo_rgb_favicon_512x512.svg" alt="PORG" className="w-full h-full object-contain" />
                 </div>
                 <span className="font-bold text-sm text-slate-800 tracking-tight">PORG Duty</span>
