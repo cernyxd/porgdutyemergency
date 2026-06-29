@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { BookableSlot, Colleague, SlotType } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { BookableSlot, Colleague, SignupControlSettings, SlotType } from '../types';
 import { Search, Clock, Calendar, Check, X, AlertCircle, Inbox, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -8,6 +8,7 @@ interface BookingListProps {
   colleagues: Colleague[];
   activeColleagueId: string;
   cooldownUntil: number | null; // epoch timestamp in ms, or null
+  signupSettings: SignupControlSettings;
   onBookSlot: (slotId: string) => void;
   onCancelBooking: (slotId: string) => void;
 }
@@ -17,6 +18,7 @@ export default function BookingList({
   colleagues,
   activeColleagueId,
   cooldownUntil,
+  signupSettings,
   onBookSlot,
   onCancelBooking
 }: BookingListProps) {
@@ -26,8 +28,31 @@ export default function BookingList({
   const [selectedLocation, setSelectedLocation] = useState<string>('all'); // 'all', or specific location
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'booked-by-me'>('all');
   const [activeTypeTab, setActiveTypeTab] = useState<SlotType>('duty');
+  const [nowTs, setNowTs] = useState(Date.now());
 
   const isCooldownActive = cooldownUntil ? Date.now() < cooldownUntil : false;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getSignupState = (type: SlotType) => {
+    const isClosed = type === 'duty' ? signupSettings.dutyClosed : signupSettings.emergencyClosed;
+    const openAt = type === 'duty' ? signupSettings.dutyOpenAt : signupSettings.emergencyOpenAt;
+    const isOpen = !isClosed || (openAt !== null && nowTs >= openAt);
+    return { isOpen, openAt };
+  };
+
+  const formatCountdown = (targetTs: number) => {
+    const totalSeconds = Math.max(0, Math.floor((targetTs - nowTs) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
 
   // Format date to determine weekday name
   const getDayName = (dateStr: string) => {
@@ -162,6 +187,28 @@ export default function BookingList({
           <p className="text-xs text-slate-500">
             Bookings are subject to a fair-share 30s cooldown.
           </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {(['duty', 'emergency'] as const).map((type) => {
+              const state = getSignupState(type);
+              const label = type === 'duty' ? 'Duties' : 'Emergency';
+              return (
+                <span
+                  key={type}
+                  className={`text-[10px] px-2 py-1 rounded-md font-bold border ${
+                    state.isOpen
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : 'bg-amber-50 text-amber-700 border-amber-100'
+                  }`}
+                >
+                  {state.isOpen
+                    ? `${label}: Open`
+                    : state.openAt
+                    ? `${label}: Opens in ${formatCountdown(state.openAt)}`
+                    : `${label}: Closed`}
+                </span>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tab switch between Duties and Emergencies */}
@@ -360,6 +407,20 @@ export default function BookingList({
         </div>
       )}
 
+      {!getSignupState(activeTypeTab).isOpen && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex gap-2.5 items-start" id="signup-closed-notice">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-xs font-bold text-rose-900">Sign-ups are currently closed</h4>
+            <p className="text-[11px] text-rose-700 leading-normal mt-0.5">
+              {getSignupState(activeTypeTab).openAt
+                ? `This opens in ${formatCountdown(getSignupState(activeTypeTab).openAt as number)}.`
+                : 'Please wait for admin to open this signup window.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* High-Density Tabular Display */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm" id="booking-grid-table-container">
         {filteredSlots.length > 0 ? (
@@ -372,6 +433,7 @@ export default function BookingList({
                 const isBookedByMe = list.includes(activeColleagueId);
                 const dayName = getDayName(slot.date);
                 const spotsLeft = Math.max(0, maxCap - list.length);
+                const signupsOpen = getSignupState(slot.type).isOpen;
 
                 return (
                   <div key={slot.id} className="p-4 flex flex-col gap-2.5">
@@ -417,14 +479,14 @@ export default function BookingList({
                       ) : (
                         <button
                           onClick={() => onBookSlot(slot.id)}
-                          disabled={isCooldownActive || spotsLeft === 0}
+                          disabled={isCooldownActive || spotsLeft === 0 || !signupsOpen}
                           className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all border shrink-0 ${
-                            isCooldownActive || spotsLeft === 0
+                            isCooldownActive || spotsLeft === 0 || !signupsOpen
                               ? 'claim-slot-btn-disabled cursor-not-allowed'
                               : 'claim-slot-btn cursor-pointer'
                           }`}
                         >
-                          {spotsLeft === 0 ? 'Full' : 'Claim Slot'}
+                          {!signupsOpen ? 'Closed' : spotsLeft === 0 ? 'Full' : 'Claim Slot'}
                         </button>
                       )}
                     </div>
@@ -452,6 +514,7 @@ export default function BookingList({
                     const isBookedByMe = list.includes(activeColleagueId);
                     const dayName = getDayName(slot.date);
                     const spotsLeft = Math.max(0, maxCap - list.length);
+                    const signupsOpen = getSignupState(slot.type).isOpen;
 
                     return (
                       <tr key={slot.id} className="hover:bg-slate-50/50 transition-colors">
@@ -489,14 +552,14 @@ export default function BookingList({
                           ) : (
                             <button
                               onClick={() => onBookSlot(slot.id)}
-                              disabled={isCooldownActive || spotsLeft === 0}
+                              disabled={isCooldownActive || spotsLeft === 0 || !signupsOpen}
                               className={`px-3.5 py-2 min-w-[5.5rem] rounded-lg text-[11px] font-bold tracking-tight transition-all border text-center ${
-                                isCooldownActive || spotsLeft === 0
+                                isCooldownActive || spotsLeft === 0 || !signupsOpen
                                   ? 'claim-slot-btn-disabled cursor-not-allowed'
                                   : 'claim-slot-btn cursor-pointer'
                               }`}
                             >
-                              {spotsLeft === 0 ? 'Full' : 'Claim Slot'}
+                              {!signupsOpen ? 'Closed' : spotsLeft === 0 ? 'Full' : 'Claim Slot'}
                             </button>
                           )}
                         </td>

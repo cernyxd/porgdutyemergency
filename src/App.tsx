@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookableSlot, Colleague, CooldownState } from './types';
+import { BookableSlot, Colleague, CooldownState, SignupControlSettings, SlotType } from './types';
 import { DEFAULT_SLOTS } from './data';
 import Sidebar from './components/Sidebar';
 import BookingList from './components/BookingList';
@@ -24,6 +24,12 @@ import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged 
 export default function App() {
   const DEFAULT_ADMIN_EMAILS = ['cernyondrej@novyporg.cz'];
   const SCHOOL_EMAIL_DOMAIN = '@novyporg.cz';
+  const DEFAULT_SIGNUP_SETTINGS: SignupControlSettings = {
+    dutyClosed: false,
+    dutyOpenAt: null,
+    emergencyClosed: false,
+    emergencyOpenAt: null,
+  };
 
   const [googleUser, setGoogleUser] = useState<{ name: string; email: string; department?: string } | null>(null);
   const [currentUserUid, setCurrentUserUid] = useState<string>('');
@@ -34,6 +40,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings' | 'import' | 'hr-export'>('book');
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [adminEmails, setAdminEmails] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
+  const [signupSettings, setSignupSettings] = useState<SignupControlSettings>(DEFAULT_SIGNUP_SETTINGS);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
@@ -122,6 +129,7 @@ export default function App() {
           setColleagues([]);
           setCooldowns({});
           setAdminEmails(DEFAULT_ADMIN_EMAILS);
+          setSignupSettings(DEFAULT_SIGNUP_SETTINGS);
           showNotification('Access restricted to @novyporg.cz accounts only.', 'error');
           return;
         }
@@ -139,6 +147,7 @@ export default function App() {
         setColleagues([]);
         setCooldowns({});
         setAdminEmails(DEFAULT_ADMIN_EMAILS);
+        setSignupSettings(DEFAULT_SIGNUP_SETTINGS);
       }
     });
 
@@ -154,9 +163,10 @@ export default function App() {
     let colleaguesReady = false;
     let cooldownsReady = false;
     let adminsReady = false;
+    let signupReady = true;
 
     const markReady = () => {
-      if (slotsReady && colleaguesReady && cooldownsReady && adminsReady) {
+      if (slotsReady && colleaguesReady && cooldownsReady && adminsReady && signupReady) {
         setIsDataLoading(false);
       }
     };
@@ -167,6 +177,8 @@ export default function App() {
           email: DEFAULT_ADMIN_EMAILS[0],
           createdAt: new Date().toISOString(),
         }, { merge: true });
+
+        await setDoc(doc(db, 'settings', 'signupControl'), DEFAULT_SIGNUP_SETTINGS, { merge: true });
 
         const colleagueId = `user_${currentUserUid}`;
         await setDoc(doc(db, 'colleagues', colleagueId), {
@@ -187,47 +199,101 @@ export default function App() {
 
     bootstrap();
 
-    const unsubSlots = onSnapshot(collection(db, 'slots'), (snapshot) => {
-      const nextSlots = snapshot.docs.map((d) => sanitizeSlot({ id: d.id, ...d.data() }));
-      setSlots(nextSlots);
-      slotsReady = true;
-      markReady();
-    });
+    const unsubSlots = onSnapshot(
+      collection(db, 'slots'),
+      (snapshot) => {
+        const nextSlots = snapshot.docs.map((d) => sanitizeSlot({ id: d.id, ...d.data() }));
+        setSlots(nextSlots);
+        slotsReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error('Slots listener failed', error);
+        slotsReady = true;
+        markReady();
+      }
+    );
 
-    const unsubColleagues = onSnapshot(collection(db, 'colleagues'), (snapshot) => {
-      const nextColleagues = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Colleague));
-      setColleagues(nextColleagues);
-      colleaguesReady = true;
-      markReady();
-    });
+    const unsubColleagues = onSnapshot(
+      collection(db, 'colleagues'),
+      (snapshot) => {
+        const nextColleagues = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Colleague));
+        setColleagues(nextColleagues);
+        colleaguesReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error('Colleagues listener failed', error);
+        colleaguesReady = true;
+        markReady();
+      }
+    );
 
-    const unsubCooldowns = onSnapshot(collection(db, 'cooldowns'), (snapshot) => {
-      const nextCooldowns: CooldownState = {};
-      snapshot.docs.forEach((d) => {
-        const ts = Number(d.data().timestamp || 0);
-        if (ts > Date.now()) {
-          nextCooldowns[d.id] = ts;
-        }
-      });
-      setCooldowns(nextCooldowns);
-      cooldownsReady = true;
-      markReady();
-    });
+    const unsubCooldowns = onSnapshot(
+      collection(db, 'cooldowns'),
+      (snapshot) => {
+        const nextCooldowns: CooldownState = {};
+        snapshot.docs.forEach((d) => {
+          const ts = Number(d.data().timestamp || 0);
+          if (ts > Date.now()) {
+            nextCooldowns[d.id] = ts;
+          }
+        });
+        setCooldowns(nextCooldowns);
+        cooldownsReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error('Cooldowns listener failed', error);
+        cooldownsReady = true;
+        markReady();
+      }
+    );
 
-    const unsubAdmins = onSnapshot(collection(db, 'admins'), (snapshot) => {
-      const emails = snapshot.docs
-        .map((d) => String(d.data().email || d.id).toLowerCase())
-        .filter(Boolean);
-      setAdminEmails(emails.length > 0 ? emails : DEFAULT_ADMIN_EMAILS);
-      adminsReady = true;
-      markReady();
-    });
+    const unsubAdmins = onSnapshot(
+      collection(db, 'admins'),
+      (snapshot) => {
+        const emails = snapshot.docs
+          .map((d) => String(d.data().email || d.id).toLowerCase())
+          .filter(Boolean);
+        setAdminEmails(emails.length > 0 ? emails : DEFAULT_ADMIN_EMAILS);
+        adminsReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error('Admins listener failed', error);
+        adminsReady = true;
+        markReady();
+      }
+    );
+
+    const unsubSignupSettings = onSnapshot(
+      doc(db, 'settings', 'signupControl'),
+      (snapshot) => {
+        const data = snapshot.data() || {};
+        setSignupSettings({
+          dutyClosed: Boolean(data.dutyClosed),
+          dutyOpenAt: data.dutyOpenAt ? Number(data.dutyOpenAt) : null,
+          emergencyClosed: Boolean(data.emergencyClosed),
+          emergencyOpenAt: data.emergencyOpenAt ? Number(data.emergencyOpenAt) : null,
+        });
+        signupReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error('Signup settings listener failed', error);
+        setSignupSettings(DEFAULT_SIGNUP_SETTINGS);
+        signupReady = true;
+        markReady();
+      }
+    );
 
     return () => {
       unsubSlots();
       unsubColleagues();
       unsubCooldowns();
       unsubAdmins();
+      unsubSignupSettings();
     };
   }, [currentUserUid, googleUser]);
 
@@ -285,6 +351,13 @@ export default function App() {
   // Cooldown checking
   const activeCooldownUntil = cooldowns[activeColleagueId] || null;
 
+  const getSignupOpenState = (type: SlotType, now = Date.now()) => {
+    const closed = type === 'duty' ? signupSettings.dutyClosed : signupSettings.emergencyClosed;
+    const openAt = type === 'duty' ? signupSettings.dutyOpenAt : signupSettings.emergencyOpenAt;
+    const isOpen = !closed || (openAt !== null && now >= openAt);
+    return { isOpen, openAt };
+  };
+
   // Book a slot
   const handleBookSlot = async (slotId: string) => {
     if (!activeColleagueId) {
@@ -314,6 +387,18 @@ export default function App() {
         }
 
         const slot = sanitizeSlot({ id: slotSnap.id, ...slotSnap.data() });
+        const signupSnap = await tx.get(doc(db, 'settings', 'signupControl'));
+        const signupData = signupSnap.data() || DEFAULT_SIGNUP_SETTINGS;
+
+        const signupClosed = slot.type === 'duty' ? Boolean(signupData.dutyClosed) : Boolean(signupData.emergencyClosed);
+        const signupOpenAtRaw = slot.type === 'duty' ? signupData.dutyOpenAt : signupData.emergencyOpenAt;
+        const signupOpenAt = signupOpenAtRaw ? Number(signupOpenAtRaw) : null;
+        const isSignupOpen = !signupClosed || (signupOpenAt !== null && Date.now() >= signupOpenAt);
+
+        if (!isSignupOpen) {
+          throw new Error(signupOpenAt ? `signups-closed-until:${signupOpenAt}` : 'signups-closed');
+        }
+
         const list = slot.bookedByList || [];
         const maxCap = slot.maxCapacity || 1;
 
@@ -342,10 +427,58 @@ export default function App() {
         showNotification('This slot is already fully booked.', 'error');
       } else if (error?.message === 'cooldown-active') {
         showNotification('Cooldown active. Please wait for the timer to finish.', 'error');
+      } else if (typeof error?.message === 'string' && error.message.startsWith('signups-closed-until:')) {
+        const ts = Number(error.message.split(':')[1]);
+        const when = isNaN(ts) ? 'scheduled by admin' : new Date(ts).toLocaleString();
+        showNotification(`Sign-ups are closed. Opens at ${when}.`, 'error');
+      } else if (error?.message === 'signups-closed') {
+        showNotification('Sign-ups are currently closed by admin.', 'error');
       } else {
         console.error('Booking failed', error);
         showNotification('Booking failed. Please try again.', 'error');
       }
+    }
+  };
+
+  const handleOpenSignupsNow = async (type: SlotType) => {
+    try {
+      const payload = type === 'duty'
+        ? { dutyClosed: false, dutyOpenAt: null }
+        : { emergencyClosed: false, emergencyOpenAt: null };
+      await setDoc(doc(db, 'settings', 'signupControl'), payload, { merge: true });
+      showNotification(`${type === 'duty' ? 'Duty' : 'Emergency'} sign-ups opened.`, 'success');
+    } catch (error: any) {
+      console.error('Open signups failed', error);
+      const code = error?.code ? ` (${error.code})` : '';
+      showNotification(`Could not update sign-up status${code}.`, 'error');
+    }
+  };
+
+  const handleCloseSignupsNow = async (type: SlotType) => {
+    try {
+      const payload = type === 'duty'
+        ? { dutyClosed: true, dutyOpenAt: null }
+        : { emergencyClosed: true, emergencyOpenAt: null };
+      await setDoc(doc(db, 'settings', 'signupControl'), payload, { merge: true });
+      showNotification(`${type === 'duty' ? 'Duty' : 'Emergency'} sign-ups closed.`, 'info');
+    } catch (error: any) {
+      console.error('Close signups failed', error);
+      const code = error?.code ? ` (${error.code})` : '';
+      showNotification(`Could not update sign-up status${code}.`, 'error');
+    }
+  };
+
+  const handleScheduleSignupsOpen = async (type: SlotType, openAt: number) => {
+    try {
+      const payload = type === 'duty'
+        ? { dutyClosed: true, dutyOpenAt: openAt }
+        : { emergencyClosed: true, emergencyOpenAt: openAt };
+      await setDoc(doc(db, 'settings', 'signupControl'), payload, { merge: true });
+      showNotification(`${type === 'duty' ? 'Duty' : 'Emergency'} sign-ups scheduled for ${new Date(openAt).toLocaleString()}.`, 'success');
+    } catch (error: any) {
+      console.error('Schedule signups failed', error);
+      const code = error?.code ? ` (${error.code})` : '';
+      showNotification(`Could not schedule sign-ups${code}.`, 'error');
     }
   };
 
@@ -598,9 +731,13 @@ export default function App() {
         slots={slots}
         cooldownUntil={activeCooldownUntil}
         isAdmin={isAdmin}
+        signupSettings={signupSettings}
         onSignOut={handleSignOut}
         isDarkMode={isDarkMode}
         onToggleTheme={() => setIsDarkMode((prev) => !prev)}
+        onOpenSignupsNow={handleOpenSignupsNow}
+        onCloseSignupsNow={handleCloseSignupsNow}
+        onScheduleSignupsOpen={handleScheduleSignupsOpen}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
@@ -628,7 +765,9 @@ export default function App() {
               </div>
             </div>
             {myBookingCount > 0 && currentTab !== 'my-bookings' && (
-              <span className="bg-indigo-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-bold">
+              <span className={`rounded-full text-white text-[10px] w-5 h-5 flex items-center justify-center font-bold ${
+                isDarkMode ? 'bg-slate-600' : 'bg-indigo-500'
+              }`}>
                 {myBookingCount}
               </span>
             )}
@@ -660,7 +799,9 @@ export default function App() {
                     <TabIcon className="h-4 w-4 shrink-0" />
                     {tab.label}
                     {tab.id === 'my-bookings' && myBookingCount > 0 && (
-                      <span className="bg-indigo-500 text-white rounded-full text-[10px] w-5 h-5 flex items-center justify-center font-mono leading-none font-bold">
+                      <span className={`rounded-full text-white text-[10px] w-5 h-5 flex items-center justify-center font-mono leading-none font-bold ${
+                        isDarkMode ? 'bg-slate-600' : 'bg-indigo-500'
+                      }`}>
                         {myBookingCount}
                       </span>
                     )}
@@ -695,6 +836,7 @@ export default function App() {
                     colleagues={colleagues}
                     activeColleagueId={activeColleagueId}
                     cooldownUntil={activeCooldownUntil}
+                    signupSettings={signupSettings}
                     onBookSlot={handleBookSlot}
                     onCancelBooking={handleCancelBooking}
                   />
@@ -745,13 +887,17 @@ export default function App() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold transition-all cursor-pointer ${
-                isActive ? 'text-indigo-600' : 'text-slate-400'
+                isActive
+                  ? (isDarkMode ? 'text-slate-200 bg-slate-800/70' : 'text-indigo-600')
+                  : (isDarkMode ? 'text-slate-500' : 'text-slate-400')
               }`}
             >
               <div className="relative">
                 <TabIcon className="h-5 w-5" />
                 {tab.id === 'my-bookings' && myBookingCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 bg-indigo-500 text-white rounded-full text-[8px] w-4 h-4 flex items-center justify-center font-bold">
+                  <span className={`absolute -top-1 -right-1.5 text-white rounded-full text-[8px] w-4 h-4 flex items-center justify-center font-bold ${
+                    isDarkMode ? 'bg-slate-600' : 'bg-indigo-500'
+                  }`}>
                     {myBookingCount}
                   </span>
                 )}

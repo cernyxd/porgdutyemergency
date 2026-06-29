@@ -185,3 +185,93 @@
   border-color: #7a2741;
   color: #fecdd3;
 }
+
+/* Spreadsheet import panel: mute bright accent colors in dark mode */
+:root[data-theme='dark'] #csv-importer-container .bg-indigo-50\/40,
+:root[data-theme='dark'] #csv-importer-container .hover\:bg-indigo-50\/10:hover {
+  background-color: #172033 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-white\/70 {
+  background-color: #1b2436 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .border-indigo-100,
+:root[data-theme='dark'] #csv-importer-container .border-indigo-100\/40,
+:root[data-theme='dark'] #csv-importer-container .border-indigo-100\/60,
+:root[data-theme='dark'] #csv-importer-container .group-hover\:border-indigo-200:hover,
+:root[data-theme='dark'] #csv-importer-container .hover\:border-indigo-400:hover {
+  border-color: #334155 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .text-indigo-950,
+:root[data-theme='dark'] #csv-importer-container .text-indigo-900,
+:root[data-theme='dark'] #csv-importer-container .text-indigo-800,
+:root[data-theme='dark'] #csv-importer-container .text-indigo-600,
+:root[data-theme='dark'] #csv-importer-container .hover\:text-indigo-800:hover,
+:root[data-theme='dark'] #csv-importer-container .group-hover\:text-indigo-600:hover,
+:root[data-theme='dark'] #csv-importer-container .group-hover\:text-indigo-950:hover {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-indigo-950\/5 {
+  background-color: #0f172a !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .border-indigo-950\/10 {
+  border-color: #334155 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .text-indigo-200 {
+  color: #64748b !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-rose-50\/70,
+:root[data-theme='dark'] #csv-importer-container .bg-rose-50,
+:root[data-theme='dark'] #csv-importer-container .bg-rose-100 {
+  background-color: #2a1a22 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-rose-600,
+:root[data-theme='dark'] #csv-importer-container .bg-rose-700,
+:root[data-theme='dark'] #csv-importer-container .hover\:bg-rose-700:hover,
+:root[data-theme='dark'] #csv-importer-container .hover\:bg-rose-850:hover {
+  background-color: #6b2238 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-rose-600,
+:root[data-theme='dark'] #csv-importer-container .bg-rose-700 {
+  color: #ffe4e6 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .border-rose-200,
+:root[data-theme='dark'] #csv-importer-container .border-rose-200\/80 {
+  border-color: #5a2a3b !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .text-rose-950,
+:root[data-theme='dark'] #csv-importer-container .text-rose-800,
+:root[data-theme='dark'] #csv-importer-container .text-rose-700,
+:root[data-theme='dark'] #csv-importer-container .text-rose-700\/90,
+:root[data-theme='dark'] #csv-importer-container .text-rose-600 {
+  color: #fda4af !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-emerald-50 {
+  background-color: #142b24 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .border-emerald-200 {
+  border-color: #245a4a !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .text-emerald-800,
+:root[data-theme='dark'] #csv-importer-container .text-emerald-700\/90,
+:root[data-theme='dark'] #csv-importer-container .text-emerald-600 {
+  color: #6ee7b7 !important;
+}
+
+:root[data-theme='dark'] #csv-importer-container .bg-indigo-600,
+:root[data-theme='dark'] #csv-importer-container .hover\:bg-indigo-700:hover {
+  background-color: #334155 !important;
+}

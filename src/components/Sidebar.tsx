@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Colleague, BookableSlot } from '../types';
+import { Colleague, BookableSlot, SignupControlSettings, SlotType } from '../types';
 import { ShieldAlert, Clock, LogOut, Moon, Sun, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -9,9 +9,13 @@ interface SidebarProps {
   slots: BookableSlot[];
   cooldownUntil: number | null;
   isAdmin: boolean;
+  signupSettings: SignupControlSettings;
   onSignOut: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  onOpenSignupsNow: (type: SlotType) => void;
+  onCloseSignupsNow: (type: SlotType) => void;
+  onScheduleSignupsOpen: (type: SlotType, openAt: number) => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -22,13 +26,22 @@ export default function Sidebar({
   slots,
   cooldownUntil,
   isAdmin,
+  signupSettings,
   onSignOut,
   isDarkMode,
   onToggleTheme,
+  onOpenSignupsNow,
+  onCloseSignupsNow,
+  onScheduleSignupsOpen,
   mobileOpen,
   onCloseMobile
 }: SidebarProps) {
   const [timeLeft, setTimeLeft] = useState(0);
+  const [nowTs, setNowTs] = useState(Date.now());
+  const [dutyOpenDateInput, setDutyOpenDateInput] = useState('');
+  const [dutyOpenTimeInput, setDutyOpenTimeInput] = useState('20:00');
+  const [emergencyOpenDateInput, setEmergencyOpenDateInput] = useState('');
+  const [emergencyOpenTimeInput, setEmergencyOpenTimeInput] = useState('20:00');
 
   const activeColleague = colleagues.find(c => c.id === activeColleagueId);
 
@@ -57,6 +70,64 @@ export default function Sidebar({
   }, [cooldownUntil]);
 
   const progressPercentage = timeLeft > 0 ? (timeLeft / 30) * 100 : 0;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const toDateInput = (ts: number | null) => {
+      if (!ts) return '';
+      const d = new Date(ts);
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    };
+
+    const toTimeInput = (ts: number | null) => {
+      if (!ts) return '20:00';
+      const d = new Date(ts);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    setDutyOpenDateInput(toDateInput(signupSettings.dutyOpenAt));
+    setDutyOpenTimeInput(toTimeInput(signupSettings.dutyOpenAt));
+    setEmergencyOpenDateInput(toDateInput(signupSettings.emergencyOpenAt));
+    setEmergencyOpenTimeInput(toTimeInput(signupSettings.emergencyOpenAt));
+  }, [signupSettings.dutyOpenAt, signupSettings.emergencyOpenAt]);
+
+  const getSignupState = (type: SlotType) => {
+    const isClosed = type === 'duty' ? signupSettings.dutyClosed : signupSettings.emergencyClosed;
+    const openAt = type === 'duty' ? signupSettings.dutyOpenAt : signupSettings.emergencyOpenAt;
+    const isOpen = !isClosed || (openAt !== null && nowTs >= openAt);
+    return { isOpen, openAt };
+  };
+
+  const formatRemaining = (targetTs: number) => {
+    const totalSeconds = Math.max(0, Math.floor((targetTs - nowTs) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
+  const handleSchedule = (type: SlotType) => {
+    const dateRaw = type === 'duty' ? dutyOpenDateInput : emergencyOpenDateInput;
+    const timeRaw = type === 'duty' ? dutyOpenTimeInput : emergencyOpenTimeInput;
+    if (!dateRaw || !timeRaw) return;
+
+    const ts = new Date(`${dateRaw}T${timeRaw}`).getTime();
+    if (Number.isNaN(ts)) return;
+    onScheduleSignupsOpen(type, ts);
+  };
 
   return (
     <>
@@ -182,6 +253,81 @@ export default function Sidebar({
           Sign Out of Account
         </button>
       </div>
+
+      {isAdmin && (
+        <div className="p-5 border-b border-slate-100 flex flex-col gap-4" id="sidebar-signup-controls">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-rose-500" />
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Admin Signup Controls</h3>
+          </div>
+
+          {(['duty', 'emergency'] as const).map((type) => {
+            const label = type === 'duty' ? 'Duties' : 'Emergency Cover';
+            const state = getSignupState(type);
+            const dateInputValue = type === 'duty' ? dutyOpenDateInput : emergencyOpenDateInput;
+            const setDateInputValue = type === 'duty' ? setDutyOpenDateInput : setEmergencyOpenDateInput;
+            const timeInputValue = type === 'duty' ? dutyOpenTimeInput : emergencyOpenTimeInput;
+            const setTimeInputValue = type === 'duty' ? setDutyOpenTimeInput : setEmergencyOpenTimeInput;
+
+            return (
+              <div key={type} className="border border-slate-200 rounded-xl p-3 flex flex-col gap-2.5 bg-white">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-700">{label}</span>
+                  {state.isOpen ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">OPEN</span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                      {state.openAt ? `Opens in ${formatRemaining(state.openAt)}` : 'CLOSED'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-[1.25fr_1fr] gap-2">
+                  <input
+                    type="date"
+                    value={dateInputValue}
+                    onChange={(e) => setDateInputValue(e.target.value)}
+                    className="w-full px-2.5 pr-8 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700"
+                  />
+                  <input
+                    type="time"
+                    step={60}
+                    value={timeInputValue}
+                    onChange={(e) => setTimeInputValue(e.target.value)}
+                    className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => onOpenSignupsNow(type)}
+                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Open Now
+                  </button>
+                  <button
+                    onClick={() => onCloseSignupsNow(type)}
+                    className="px-2 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Close Now
+                  </button>
+                  <button
+                    onClick={() => handleSchedule(type)}
+                    disabled={!dateInputValue || !timeInputValue}
+                    className={`px-2 py-1.5 text-[10px] font-bold rounded-lg border cursor-pointer ${
+                      dateInputValue && timeInputValue
+                        ? 'border-slate-900 bg-slate-900 text-white hover:bg-slate-800'
+                        : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Set Time
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
 
 

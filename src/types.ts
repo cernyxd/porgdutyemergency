@@ -24,3 +24,10 @@ export interface Colleague {
 export interface CooldownState {
   [colleagueId: string]: number; // Maps colleague ID to epoch timestamp (ms) when cooldown ends
 }
+
+export interface SignupControlSettings {
+  dutyClosed: boolean;
+  dutyOpenAt: number | null;
+  emergencyClosed: boolean;
+  emergencyOpenAt: number | null;
+}

@@ -445,10 +445,6 @@ TUE_EMERGENCY_01,Tuesday,Physics Lab Grade 11,10:00,10:45,45,2`;
               Spreadsheet Requirements
             </h3>
             
-            <p className="text-xs text-indigo-900/80 leading-relaxed">
-              We natively support your school system's original spreadsheets! You can upload either table:
-            </p>
-
             <div className="text-xs font-semibold text-slate-700 bg-white/70 p-2.5 rounded-xl border border-indigo-100/40 flex flex-col gap-1.5">
               <span className="text-indigo-950 font-bold">1. Duties (masterDutySlots):</span>
               <p className="text-[10px] text-slate-500 leading-normal font-normal">

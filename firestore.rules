@@ -14,7 +14,10 @@ service cloud.firestore {
 
     function isAdminUser() {
       return isSchoolUser()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+        && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+          || exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
+        );
     }
 
     function oldBookedList() {
@@ -85,11 +88,16 @@ service cloud.firestore {
         isAdminUser()
         || (
           adminId == 'cernyondrej@novyporg.cz'
-          && request.auth.token.email == adminId
+          && request.auth.token.email.lower() == adminId
           && !exists(/databases/$(database)/documents/admins/$(adminId))
         )
       );
       allow update, delete: if isSchoolUser() && isAdminUser();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSchoolUser();
+      allow create, update, delete: if isSchoolUser() && isAdminUser();
     }
   }
 }
