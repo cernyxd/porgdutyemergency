@@ -133,6 +133,10 @@ export default function BookingList({
     });
   }, [slots, activeTypeTab, activeColleagueId]);
 
+  const colleagueById = useMemo(() => {
+    return new Map(colleagues.map((colleague) => [colleague.id, colleague]));
+  }, [colleagues]);
+
   // Filter slots based on state
   const filteredSlots = useMemo(() => {
     return slots.filter(slot => {
@@ -515,6 +519,10 @@ export default function BookingList({
                     const dayName = getDayName(slot.date);
                     const spotsLeft = Math.max(0, maxCap - list.length);
                     const signupsOpen = getSignupState(slot.type).isOpen;
+                    const bookedEmails = list.map((id) => colleagueById.get(id)?.email || id);
+                    const capacityTooltip = bookedEmails.length > 0
+                      ? `Booked by: ${bookedEmails.join(', ')}`
+                      : 'No one is booked yet';
 
                     return (
                       <tr key={slot.id} className="hover:bg-slate-50/50 transition-colors">
@@ -529,7 +537,10 @@ export default function BookingList({
                           <div className="flex flex-col">
                             <span className="font-bold">{slot.title}</span>
                             {maxCap > 1 && (
-                              <span className="text-[10px] text-indigo-600 font-semibold mt-0.5">
+                              <span
+                                className="text-[10px] text-indigo-600 font-semibold mt-0.5"
+                                title={capacityTooltip}
+                              >
                                 Capacity: {list.length}/{maxCap} booked ({spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left)
                               </span>
                             )}
